@@ -35,10 +35,13 @@ on:
           - frp
           - nginx
           - gecoosac
+          - openlist2
           - luci-app-aria2
           - luci-app-frpc
           - luci-app-frps
           - luci-app-gecoosac
+          - luci-app-openlist2
+          - luci-theme-aurora
   workflow_call:
     inputs:
       sdk_version:
@@ -182,6 +185,7 @@ jobs:
           gettext \
           git \
           libelf-dev \
+          libfuse-dev \
           libncurses-dev \
           libssl-dev \
           python3 \
@@ -249,5 +253,5 @@ jobs:
           - 选择的架构：${{ inputs.arch }}
           - 选择的 SDK：${{ inputs.sdk_version }}
           - 选择的软件包：${{ inputs.package }}
-          - 源码来源：[laipeng668/packages](https://github.com/laipeng668/packages)（aria2、ariang、frp-binary-toml、nginx分支）、[laipeng668/luci](https://github.com/laipeng668/luci)（frp-toml分支）、[laipeng668/luci-app-gecoosac](https://github.com/laipeng668/luci-app-gecoosac)（main分支）
-          - 安装说明：`apk` 软件包安装命令 `apk add --allow-untrusted *`
+          - 源码来源：[laipeng668/packages](https://github.com/laipeng668/packages)（aria2、ariang、frp-binary-toml、nginx分支）、[laipeng668/luci](https://github.com/laipeng668/luci)（frp-toml分支）、[laipeng668/luci-app-gecoosac](https://github.com/laipeng668/luci-app-gecoosac)、[eamonxg/luci-theme-aurora](https://github.com/eamonxg/luci-theme-aurora)、[sbwml/luci-app-openlist2](https://github.com/sbwml/luci-app-openlist2)
+          - 安装说明：`apk` 软件包使用 `apk add --allow-untrusted *`，`ipk` 软件包使用 `opkg install *.ipk`

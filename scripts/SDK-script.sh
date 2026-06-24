@@ -4,6 +4,8 @@ set -Eeuo pipefail
 PACKAGES_REPO="${PACKAGES_REPO:-https://github.com/laipeng668/packages}"
 LUCI_REPO="${LUCI_REPO:-https://github.com/laipeng668/luci}"
 GECOOSAC_REPO="${GECOOSAC_REPO:-https://github.com/laipeng668/luci-app-gecoosac}"
+AURORA_REPO="${AURORA_REPO:-https://github.com/eamonxg/luci-theme-aurora}"
+OPENLIST2_REPO="${OPENLIST2_REPO:-https://github.com/sbwml/luci-app-openlist2}"
 OPENWRT_TARGET="${OPENWRT_TARGET:-x86}"
 OPENWRT_SUBTARGET="${OPENWRT_SUBTARGET:-64}"
 OPENWRT_TARGET_PROFILE="${OPENWRT_TARGET_PROFILE:-}"
@@ -43,7 +45,7 @@ normalize_package_selection() {
     "" | all | "全部")
       printf 'all\n'
       ;;
-    aria2 | ariang | frp | nginx | gecoosac | luci-app-aria2 | luci-app-frpc | luci-app-frps | luci-app-gecoosac)
+    aria2 | ariang | frp | nginx | gecoosac | openlist2 | luci-app-aria2 | luci-app-frpc | luci-app-frps | luci-app-gecoosac | luci-app-openlist2 | luci-theme-aurora)
       printf '%s\n' "$selection"
       ;;
     frpc | frps | frp-binary-toml | frp-toml)
@@ -52,8 +54,14 @@ normalize_package_selection() {
     nginx-full | nginx-ssl)
       printf 'nginx\n'
       ;;
+    openlist)
+      printf 'openlist2\n'
+      ;;
+    luci-app-openlist)
+      printf 'luci-app-openlist2\n'
+      ;;
     *)
-      die "Unsupported PACKAGE_SELECTION: ${1:-} (supported: all, aria2, ariang, frp, nginx, gecoosac, luci-app-aria2, luci-app-frpc, luci-app-frps, luci-app-gecoosac)"
+      die "Unsupported PACKAGE_SELECTION: ${1:-} (supported: all, aria2, ariang, frp, nginx, gecoosac, openlist2, luci-app-aria2, luci-app-frpc, luci-app-frps, luci-app-gecoosac, luci-app-openlist2, luci-theme-aurora)"
       ;;
   esac
 }
@@ -268,18 +276,22 @@ git_sparse_clone() {
   rm -rf "$repodir"
 }
 
-git_clone_gecoosac() {
-  local target_path="$SDK_ROOT/package/luci-app-gecoosac"
+git_clone_package_repo() {
+  local repourl="$1"
+  local target_path="$2"
+  local makefile_path
+  shift 2
 
   rm -rf "$target_path"
   git clone \
     --depth=1 \
     --no-tags \
-    "$GECOOSAC_REPO" \
+    "$repourl" \
     "$target_path"
 
-  [ -f "$target_path/gecoosac/Makefile" ] || die "Package Makefile not found: $target_path/gecoosac/Makefile"
-  [ -f "$target_path/luci-app-gecoosac/Makefile" ] || die "Package Makefile not found: $target_path/luci-app-gecoosac/Makefile"
+  for makefile_path in "$@"; do
+    [ -f "$target_path/$makefile_path" ] || die "Package Makefile not found: $target_path/$makefile_path"
+  done
 }
 
 remove_builtin_packages() {
@@ -304,7 +316,13 @@ load_custom_packages() {
   git_sparse_clone frp-toml "$LUCI_REPO" feeds/luci \
     applications/luci-app-frpc \
     applications/luci-app-frps
-  git_clone_gecoosac
+  git_clone_package_repo "$GECOOSAC_REPO" "$SDK_ROOT/package/luci-app-gecoosac" \
+    gecoosac/Makefile \
+    luci-app-gecoosac/Makefile
+  git_clone_package_repo "$AURORA_REPO" "$SDK_ROOT/package/luci-theme-aurora" Makefile
+  git_clone_package_repo "$OPENLIST2_REPO" "$SDK_ROOT/package/openlist2" \
+    openlist2/Makefile \
+    luci-app-openlist2/Makefile
 }
 
 prune_luci_translations() {
@@ -316,6 +334,7 @@ prune_luci_translations() {
 
   for root_dir in \
     "$SDK_ROOT/package/luci-app-gecoosac" \
+    "$SDK_ROOT/package/luci-theme-aurora" \
     "$SDK_ROOT/package/roc" \
     "$SDK_ROOT/package/feeds/luci" \
     "$SDK_ROOT/feeds/luci/applications"; do
@@ -454,6 +473,14 @@ generate_artifact_filters() {
   selection_in nginx && config_package_enabled nginx-full && add_artifact_package nginx-full
   selection_in nginx && config_package_enabled nginx-ssl && add_artifact_package nginx-ssl
 
+  if { selection_in openlist2 && config_package_enabled openlist2; } ||
+    { selection_in luci-app-openlist2 && {
+      config_package_enabled openlist2 ||
+        config_package_enabled luci-app-openlist2
+    }; }; then
+    add_artifact_package openlist2
+  fi
+
   if selection_in gecoosac luci-app-gecoosac && {
     config_package_enabled gecoosac ||
       config_package_enabled luci-app-gecoosac
@@ -465,6 +492,13 @@ generate_artifact_filters() {
     add_artifact_package luci-app-gecoosac
     add_luci_i18n_packages gecoosac
   fi
+
+  if selection_in luci-app-openlist2 && config_package_enabled luci-app-openlist2; then
+    add_artifact_package luci-app-openlist2
+    add_luci_i18n_packages openlist2
+  fi
+
+  selection_in luci-theme-aurora && config_package_enabled luci-theme-aurora && add_artifact_package luci-theme-aurora
 
   [ "${#ARTIFACT_PACKAGE_NAMES[@]}" -gt 0 ] || die "No package artifact filters were generated for PACKAGE_SELECTION=$PACKAGE_SELECTION"
 }
@@ -565,6 +599,14 @@ generate_compile_targets() {
     add_compile_target package/feeds/packages/nginx/compile
   fi
 
+  if { selection_in openlist2 && config_package_enabled openlist2; } ||
+    { selection_in luci-app-openlist2 && {
+      config_package_enabled openlist2 ||
+        config_package_enabled luci-app-openlist2
+    }; }; then
+    add_compile_target package/openlist2/openlist2/compile
+  fi
+
   if selection_in luci-app-frpc && config_package_enabled luci-app-frpc; then
     add_compile_target package/feeds/luci/luci-app-frpc/compile
   fi
@@ -586,6 +628,14 @@ generate_compile_targets() {
 
   if selection_in luci-app-gecoosac && config_package_enabled luci-app-gecoosac; then
     add_compile_target package/luci-app-gecoosac/luci-app-gecoosac/compile
+  fi
+
+  if selection_in luci-app-openlist2 && config_package_enabled luci-app-openlist2; then
+    add_compile_target package/openlist2/luci-app-openlist2/compile
+  fi
+
+  if selection_in luci-theme-aurora && config_package_enabled luci-theme-aurora; then
+    add_compile_target package/luci-theme-aurora/compile
   fi
 
   [ "${#COMPILE_TARGETS[@]}" -gt 0 ] || die "No matching package compile targets were enabled by $PACKAGE_CONFIG_FILES for PACKAGE_SELECTION=$PACKAGE_SELECTION"
